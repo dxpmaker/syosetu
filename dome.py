@@ -6,94 +6,89 @@ from urllib import request
 from argparse import ArgumentParser
 from bs4 import BeautifulSoup
 import ssl
-import urllib.request
-
-
-
-# このファイルがあるディレクトリ
+#非官方模拟请求
+# 本文件所在的目录
 dir_base = os.path.dirname(os.path.abspath(__file__))
+
+# 设置代理（如果需要）
 proxy = request.ProxyHandler({
     "http": "http://127.0.0.1:7890",
     "https": "http://127.0.0.1:7890",
 })
 opener = request.build_opener(proxy)
 request.install_opener(opener)
-# def get_args():
-#     parser = ArgumentParser()
-#     parser.add_argument("ncode", type=str,
-#                         help="N-code")
-#     parser.add_argument("--reset", "-r", action="store_true",
-#                         help="delete and refetch all parts")
-#     args = parser.parse_args()
-#     return args
-
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
+}
 
 def main():
-    # args = get_args()
-    # ncode = args.ncode
-    # resetFlag = args.reset
+    # 示例 N-code 和重置标志
     ncode = 'n9579io'
     resetFlag = True
-    # ncodeのバリデーションチェック
+
+    # 验证 N-code 格式
     ncode = ncode.lower()
     if not re.match(r"n[0-9]{4}[a-z]{2}", ncode):
-        print("1Incorrect N-code!!")
+        print("N-code 不正确！！")
         sys.exit(1)
 
-    # 全部分数を取得
-    info_url = "https://ncode.syosetu.com/novelview/infotop/ncode/{}/".format(ncode)
+    # 获取小说信息
+    info_url = f"https://ncode.syosetu.com/novelview/infotop/ncode/{ncode}/"
     print(info_url)
-    context = ssl.create_default_context(cafile="assets/ncode.syosetu.com.pem")
-    # info_res = request.urlopen(info_url)
+
+    # 创建 SSL 上下文；根据需要进行调整
+    context = ssl.SSLContext()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
+    req = request.Request(info_url, headers=headers)
+    info_res = request.urlopen(req, context=context)
     try:
-        info_res = request.urlopen(info_url,context=context)
+        info_res = request.urlopen(req, context=context)
     except Exception:
-        print("2Incorrect N-code!!")
+        print("获取 N-code 信息失败")
         sys.exit(1)
+
     soup = BeautifulSoup(info_res, "html.parser")
     pre_info = soup.select_one("#pre_info").text
     num_parts = int(re.search(r"全([0-9]+)部分", pre_info).group(1))
 
-    # 小説を保存するディレクトリがなければ作成
-    novel_dir = os.path.normpath(os.path.join(dir_base, "{}".format(ncode)))
+    # 如果小说目录不存在，则创建
+    novel_dir = os.path.normpath(os.path.join(dir_base, ncode))
     if not os.path.exists(novel_dir):
         os.mkdir(novel_dir)
 
-    # すでに保存している部分番号のsetを取得
-    re_part = re.compile(r"{}_([0-9]+).txt".format(ncode))
-    existing_parts = {int(re_part.search(fn).group(1)) for fn in os.listdir(novel_dir)}
+    # 获取已存在的部分编号
+    re_part = re.compile(rf"{ncode}_([0-9]+).txt")
+    existing_parts = {int(re_part.search(fn).group(1)) for fn in os.listdir(novel_dir) if re_part.search(fn)}
 
-    # 新たに取得すべき部分番号のリストを生成
-    # resetFlagがTrueならすべての部分を取得する
-    if resetFlag:
-        fetch_parts = list(range(1, num_parts + 1))
-    else:
-        fetch_parts = set(range(1, num_parts + 1)) - existing_parts
-        fetch_parts = sorted(fetch_parts)
+    # 确定需要获取的部分
+    fetch_parts = list(range(1, num_parts + 1)) if resetFlag else sorted(set(range(1, num_parts + 1)) - existing_parts)
 
     num_fetch_rest = len(fetch_parts)
     for part in fetch_parts:
-        # 作品本文ページのURL
-        url = "https://ncode.syosetu.com/{}/{:d}/".format(ncode, part)
+        # 构建小说部分的 URL
+        url = f"https://ncode.syosetu.com/{ncode}/{part}/"
 
-        res = request.urlopen(url)
-        soup = BeautifulSoup(res, "html.parser")
+        try:
+            res = request.urlopen(url, context=context)
+            soup = BeautifulSoup(res, "html.parser")
 
-        # CSSセレクタで本文を指定
-        honbun = soup.select_one("#novel_honbun").text
-        honbun += "\n"  # 次の部分との間は念のため改行しておく
+            # 选择主要内容
+            honbun = soup.select_one("#novel_honbun").text + "\n"  # 为分隔添加换行符
 
-        # 保存
-        name = os.path.join(novel_dir, "{}_{:d}.txt".format(ncode, part))
-        with open(name, "w", encoding="utf-8") as f:
-            f.write(honbun)
+            # 将内容保存到文件
+            name = os.path.join(novel_dir, f"{ncode}_{part}.txt")
+            with open(name, "w", encoding="utf-8") as f:
+                f.write(honbun)
 
-        # 進捗を表示
-        num_fetch_rest = num_fetch_rest - 1
-        print("part {:d} downloaded (rest: {:d} parts)".format(
-            part, num_fetch_rest))
+            # 显示进度
+            num_fetch_rest -= 1
+            print(f"第 {part} 部下载完成（剩余: {num_fetch_rest} 部）")
 
-        time.sleep(1)  # 次の部分取得までは1秒間の時間を空ける
+            time.sleep(1)  # 在下一次请求前等待 1 秒
+        except Exception as e:
+            print(f"获取第 {part} 部时出错: {e}")
 
 
 if __name__ == "__main__":
