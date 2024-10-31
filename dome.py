@@ -21,7 +21,7 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
 }
 
-def main():
+def main(s):
     # 示例 N-code 和重置标志
     ncode = 'n9579io'
     resetFlag = True
@@ -48,11 +48,23 @@ def main():
     except Exception:
         print("获取 N-code 信息失败")
         sys.exit(1)
-
+    print(info_res)
     soup = BeautifulSoup(info_res, "html.parser")
     pre_info = soup.select_one("#pre_info").text
-    num_parts = int(re.search(r"全([0-9]+)部分", pre_info).group(1))
+    print(pre_info)
+    try:
+        num_parts = int(re.search(r"全([0-9]+)エピソード", pre_info).group(1))
 
+    except Exception:
+        self.getOne()#文章可能是短篇小说
+    slef.getList(num_parts)
+
+
+if __name__ == "__main__":
+    main()
+def getOne():
+    return
+def getList(num_parts,ncode):
     # 如果小说目录不存在，则创建
     novel_dir = os.path.normpath(os.path.join(dir_base, ncode))
     if not os.path.exists(novel_dir):
@@ -69,7 +81,7 @@ def main():
     for part in fetch_parts:
         # 构建小说部分的 URL
         url = f"https://ncode.syosetu.com/{ncode}/{part}/"
-
+        print(url)
         try:
             res = request.urlopen(url, context=context)
             soup = BeautifulSoup(res, "html.parser")
@@ -89,7 +101,3 @@ def main():
             time.sleep(1)  # 在下一次请求前等待 1 秒
         except Exception as e:
             print(f"获取第 {part} 部时出错: {e}")
-
-
-if __name__ == "__main__":
-    main()
