@@ -92,7 +92,7 @@ class getNcode:
 
         num_fetch_rest = len(fetch_parts)
         for part in fetch_parts:
-            # 构建小说部分的 URL
+            # 构建小说部分的 URL.0
             info_url = f"https://ncode.syosetu.com/{ncode}/{part}/"
             print(info_url)
             try:
