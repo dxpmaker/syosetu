@@ -1,11 +1,15 @@
+import sys
 import os
+import time
+import re
 from urllib import request
 from urllib import parse
+from argparse import ArgumentParser
+from bs4 import BeautifulSoup
 import ssl
 
 dir_base = os.path.dirname(os.path.abspath(__file__))
-#获取最后的n码
-def getOver():
+def main():
     #https://dev.syosetu.com/man/api/
     #n码逻辑为
     params = {
