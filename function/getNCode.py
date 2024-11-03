@@ -15,11 +15,7 @@ import itertools
 import string
 class getNcode:
     # 非官方模拟请求
-    # 本文件所在的目录
     dir_base = os.path.dirname(os.path.abspath(__file__))
-
-    # 设置代理（如果需要）
-
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
     }
