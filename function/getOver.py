@@ -9,9 +9,9 @@ def getOver():
     #https://dev.syosetu.com/man/api/
     #n码逻辑为
     params = {
-        'lim': 500,
+        'lim': 1,
         'out': 'json',
-        'st': 2000,
+        'st': 1,
         'order':'ncodedesc'#ncodeasc 这个属性疑似是正序排列但是未在官方文档
     }
     proxy = request.ProxyHandler({
@@ -30,4 +30,3 @@ def getOver():
     response = request.urlopen(info_url,context=context)
     content = response.read().decode('utf-8')
     print(content)
-main()

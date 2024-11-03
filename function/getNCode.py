@@ -1,23 +1,25 @@
 import sys
 import os
+import threading
 import time
 import re
 from urllib import request
 from argparse import ArgumentParser
 from bs4 import BeautifulSoup
 import ssl
+import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+from urllib import parse
+import json
+import itertools
+import string
 class getNcode:
     # 非官方模拟请求
     # 本文件所在的目录
     dir_base = os.path.dirname(os.path.abspath(__file__))
 
     # 设置代理（如果需要）
-    proxy = request.ProxyHandler({
-        "http": "http://127.0.0.1:7890",
-        "https": "http://127.0.0.1:7890",
-    })
-    opener = request.build_opener(proxy)
-    request.install_opener(opener)
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
     }
@@ -26,7 +28,7 @@ class getNcode:
     context.verify_mode = ssl.CERT_NONE
     resetFlag = True
 
-    def main(self,ncode):
+    def getBody(self, ncode):
         # 示例 N-code 和重置标志
         ncode = ncode.lower()
         print(ncode)
@@ -54,9 +56,37 @@ class getNcode:
             num_parts = int(re.search(r"全([0-9]+)エピソード", pre_info).group(1))
             self.getList(num_parts,ncode)
         except Exception:
-            self.getOne(ncode)  # 文章可能是短篇小说
+            try:
+                self.getOne(ncode)  # 文章可能是短篇小说
+            except Exception:
+                print(f"请求失败疑似n码{ncode}不存在",ncode)
 
+    def inputSQL(self,table_name, sql_statements):
+        sql_file_name = f"{table_name}.sql"
+        file_exists = os.path.isfile(sql_file_name)
 
+        # 如果文件不存在，创建新文件并写入创建表的语句
+        if not file_exists:
+            with open(sql_file_name, 'w') as f:
+                f.write(f"CREATE TABLE {table_name} (\n")
+                f.write("    id INT PRIMARY KEY,\n")
+                f.write("    name TEXT,\n")
+                f.write("    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n")
+                f.write(");\n")
+                print(f"{sql_file_name} created with table definition.")
+
+        # 追加新的 SQL 语句
+        with open(sql_file_name, 'a') as f:
+            for statement in sql_statements:
+                f.write(statement + "\n")
+                print(f"Inserted statement: {statement}")
+    #     table_name = "my_table"
+    # sql_statements = [
+    #     "INSERT INTO my_table (id, name) VALUES (1, 'Alice');",
+    #     "INSERT INTO my_table (id, name) VALUES (2, 'Bob');"
+    # ]
+    #
+    # create_sql_file(table_name, sql_statements)
     def getOne(self,ncode):
         novel_dir = self.getDir(ncode)
         info_url = f"https://ncode.syosetu.com/{ncode}/"
@@ -117,14 +147,82 @@ class getNcode:
 
 
     def getDir(self,ncode):
-        novel_dir = os.path.normpath(os.path.join(self.dir_base, ncode))
+        printDiv = "print/"
+        novel_dir = printDiv + os.path.normpath(os.path.join(self.dir_base, ncode))
         if not os.path.exists(novel_dir):
             os.mkdir(novel_dir)
         return novel_dir
     def get(self,info_url):
+        proxy = request.ProxyHandler({
+            "http": "http://127.0.0.1:7890",
+            "https": "http://127.0.0.1:7890",
+        })
+        opener = request.build_opener(proxy)
+        request.install_opener(opener)
         req = request.Request(info_url, headers=self.headers)
         return request.urlopen(req, context=self.context)
 
+    def getOver(self):
+        # https://dev.syosetu.com/man/api/
+        # n码逻辑为
+        params = {
+            'lim': 1,
+            'out': 'json',
+            'st': 1,
+            'order': 'ncodeasc'  # ncodeasc 这个属性疑似是正序排列但是未在官方文档
+        }
+        print = {}
+        query_string = parse.urlencode(params)
+        info_url = f"https://api.syosetu.com/novelapi/api/?{query_string}"
+        response = self.get(info_url)
+        content = json.loads(response.read().decode('utf-8'))
+        # print(content[1]["ncode"])
+        print["ncodeasc"] = content[1]["ncode"]
+        params['order'] = 'ncodedesc'
+        query_string = parse.urlencode(params)
+        info_url = f"https://api.syosetu.com/novelapi/api/?{query_string}"
+        response = self.get(info_url)
+        content = json.loads(response.read().decode('utf-8'))
+        # print(content[1]["ncode"])
+        print["ncodedesc"] = content[1]["ncode"]
+        return print
+    #创建线程池
+    def getFutures(self,start, end,futures=4):
+        self.getOver()
+        start_prefix = start[:-3]
+        start_number = int(start[1:6])
+        start_suffix = start[6:]
+
+        end_prefix = end[:-3]
+        end_number = int(end[1:6])
+        end_suffix = end[6:]
+        letters = list(string.ascii_uppercase)
+        suffixes = ["".join(suffix) for suffix in itertools.product(letters, repeat=1)] + \
+                   ["".join(suffix) for suffix in itertools.product(letters, repeat=2)]
+
+        # 截取所需范围的组合
+        suffixes = suffixes[suffixes.index(start_suffix):suffixes.index(end_suffix) + 1]
+        for suffix in suffixes:
+            for number in range(start_number, end_number + 1):
+                if suffix == start_suffix and number == start_number:
+                    print(f"{start_prefix}{number:05d}{suffix}")
+                elif suffix == end_suffix and number == end_number:
+                    print(f"{end_prefix}{number:05d}{suffix}")
+                    return
+                else:
+                    print(f"{start_prefix}{number:05d}{suffix}")
+        threadPool = ThreadPoolExecutor(max_workers=futures, thread_name_prefix="test_")
+        for i in range(0,10):
+    #         test(str(i), str(i+1))
+            try:
+                threadPool.map(self.getBody) # 这是运行一次test的参数，众所周知map可以让test执行多次，即一个[]代表一个参数，一个参数赋予不同的值即增加[]的长度如从[1]到[1,2,3]
+            except Exception as e:
+                print(e)
+        threadPool.shutdown(wait=True)
+
 if __name__ == "__main__":
+
     server = getNcode()
-    server.main("N0927A")
+    print(server.getOver())
+
+    # server.main("N0927A")
