@@ -7,7 +7,12 @@ from fake_useragent import UserAgent
 
 #https://api.openproxylist.xyz/socks4.txt
 #https://api.openproxylist.xyz/socks5.txt
+
 class GetProxyIP():
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chro'
+                      'me/53.0.2785.104 Safari/537.36 Core/1.53.2372.400 QQBrowser/9.5.10548.400'
+    }
     def __init__(self):
         self.socks4 = 'https://api.openproxylist.xyz/socks4.txt'
         self.socks5 = 'https://api.openproxylist.xyz/socks5.txt'
@@ -34,7 +39,7 @@ class GetProxyIP():
             proxy = f"http://{ip}:{port}"
             # thisIP = "".join(IP.split(":")[0:1])
             # print(thisIP)
-            res = requests.get(url="https://icanhazip.com/", timeout=2, proxies={"https": proxy})
+            res = requests.get(url="http://icanhazip.com/",headers=self.headers, timeout=10, proxies={"http": proxy})
             proxyIP = res.text
             if (proxyIP == proxy):
                 print(f"代理IP:{ip}:{port}有效！")
@@ -59,6 +64,7 @@ class GetProxyIP():
             return None
 
     def parse_ip_port(self,text):
+        # 文本中每一行包含一个 IP 及其端口号，以��号分隔。
         ip_port_list = text.splitlines()  # 按行分割文本
         result = []
         for item in ip_port_list:
@@ -67,8 +73,26 @@ class GetProxyIP():
                 result.append({'ip': ip.strip(), 'port': port.strip()})  # 创建字典并添加到结果列表
 
         return result
+def dome():
+
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chro'
+                      'me/53.0.2785.104 Safari/537.36 Core/1.53.2372.400 QQBrowser/9.5.10548.400'
+    }
+    proxies = {
+        "http": "http://185.132.242.212:8083",
+        "https": "https://185.132.242.212:8083",
+    }
+    try:
+        response = requests.get("https://icanhazip.com/", proxies=proxies, timeout=10,headers=headers,verify=False)  # 增加超时时间
+        print(response.text)
+    except requests.exceptions.ProxyError as e:
+        print("Proxy error:", e)
+    except requests.exceptions.Timeout as e:
+        print("Timeout error:", e)
 if __name__ == '__main__':
-    server = GetProxyIP()
+    # server = GetProxyIP()
+    dome()
     # 示例 IP 地址
     # ip_address = '8.8.8.8'  # Google 的公共 DNS 服务器
     # info = GetProxyIP.get_ip_info(ip_address)
