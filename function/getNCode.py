@@ -13,12 +13,15 @@ from urllib import parse
 import json
 import itertools
 import string
+from fake_useragent import UserAgent
 class getNcode:
     # 非官方模拟请求
     dir_base = os.path.dirname(os.path.abspath(__file__))
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
-    }
+    # 随机生成User-Agent
+    def get_random_ua(self):
+        ua = UserAgent()  # 创建User-Agent对象
+        headers = ua.random
+        return {'User-Agent':headers}
     context = ssl.SSLContext()
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
@@ -155,7 +158,7 @@ class getNcode:
         })
         opener = request.build_opener(proxy)
         request.install_opener(opener)
-        req = request.Request(info_url, headers=self.headers)
+        req = request.Request(info_url, headers=self.get_random_ua())
         return request.urlopen(req, context=self.context)
 
     def getOver(self):

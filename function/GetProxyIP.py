@@ -1,61 +1,84 @@
-'''
-遇到问题没人解答？小编创建了一个Python学习交流QQ群：778463939
-寻找有志同道合的小伙伴，互帮互助,群里还有不错的视频学习教程和PDF电子书！
-'''
+
 import requests
 from lxml import etree
 import time
 import random
 from fake_useragent import UserAgent
 
-
-class GetProxyIP(object):
+#https://api.openproxylist.xyz/socks4.txt
+#https://api.openproxylist.xyz/socks5.txt
+class GetProxyIP():
     def __init__(self):
-        self.url = 'https://www.xicidaili.com/nn/'
-        self.proxies = {
-            'http': 'http://163.204.247.219:9999',
-            'https': 'http://163.204.247.219:9999'}
+        self.socks4 = 'https://api.openproxylist.xyz/socks4.txt'
+        self.socks5 = 'https://api.openproxylist.xyz/socks5.txt'
+        self.socks4List = self.getToList(self.socks4)
+        # self.socks5List = self.getToList(self.socks5)
 
-    # 随机生成User-Agent
-    def get_random_ua(self):
-        ua = UserAgent()  # 创建User-Agent对象
-        useragent = ua.random
-        return useragent
+    def getToList(self,url):
+        list = requests.get(url,timeout=2)
+        # print(self.parse_ip_port(list.text))
+        return self.filter(self.parse_ip_port(list.text))
+    def filter(self,list):
+        # print(list)
+        for i in list:
+            print(i)
+            if self.check_proxy(i["ip"],i["port"]):
+                list.delete(i)
+        return list
 
-    # 从西刺代理网站上获取随机的代理IP
-    def get_ip_file(self, url):
-        headers = {'User-Agent': self.get_random_ua()}
-        html = requests.get(url=url, proxies=self.proxies, headers=headers, timeout=5).content.decode('utf-8', 'ignore')
-        parse_html = etree.HTML(html)
-        tr_list = parse_html.xpath('//tr')  # 基准xpath，匹配每个代理IP的节点对象列表
-
-        for tr in tr_list[1:]:
-            ip = tr.xpath('./td[2]/text()')[0]
-            port = tr.xpath('./td[3]/text()')[0]
-            self.test_proxy_ip(ip, port)  # 测试ip:port是否可用
-
-    # 测试抓取的代理IP是否可用
-    def test_proxy_ip(self, ip, port):
-        proxies = {
-            'http': 'http://{}:{}'.format(ip, port),
-            'https': 'https://{}:{}'.format(ip, port), }
-        test_url = 'http://www.baidu.com/'
+    def check_proxy(self,ip, port):
         try:
-            res = requests.get(url=test_url, proxies=proxies, timeout=8)
-            if res.status_code == 200:
-                print(ip, ":", port, 'Success')
-                with open('proxies.txt', 'a') as f:
-                    f.write(ip + ':' + port + '\n')
+            # 设置重连次数
+            requests.adapters.DEFAULT_RETRIES = 3
+            # IP = random.choice(IPAgents)
+            proxy = f"http://{ip}:{port}"
+            # thisIP = "".join(IP.split(":")[0:1])
+            # print(thisIP)
+            res = requests.get(url="https://icanhazip.com/", timeout=2, proxies={"https": proxy})
+            proxyIP = res.text
+            if (proxyIP == proxy):
+                print(f"代理IP:{ip}:{port}有效！")
+                if self.get_ip_info(ip).get == 'CN':#访问外国网站
+                    return False
+                return True
+            else:
+                print(f"代理IP:{ip}:{port}无效！ 错误地址1")
+                return False
         except Exception as e:
-            print(ip, port, 'Failed')
+            print(f"{e}")
+            print(f"代理IP:{ip}:{port}无效 错误地址2！")
+        return False
 
-    def main(self):
-        for i in range(1, 1001):
-            url = self.url.format(i)
-            self.get_ip_file(url)
-            time.sleep(random.randint(5, 10))
+    def get_ip_info(self,ip_address):
+        url = f'https://ipinfo.io/{ip_address}/json'
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return None
 
+    def parse_ip_port(self,text):
+        ip_port_list = text.splitlines()  # 按行分割文本
+        result = []
+        for item in ip_port_list:
+            if item.strip():  # 忽略空行
+                ip, port = item.split(':')  # 按冒号分割 IP 和端口
+                result.append({'ip': ip.strip(), 'port': port.strip()})  # 创建字典并添加到结果列表
 
+        return result
 if __name__ == '__main__':
-    spider = GetProxyIP()
-    spider.main()
+    server = GetProxyIP()
+    # 示例 IP 地址
+    # ip_address = '8.8.8.8'  # Google 的公共 DNS 服务器
+    # info = GetProxyIP.get_ip_info(ip_address)
+    #
+    # if info:
+    #     print(f"IP 地址: {info.get('ip')}")
+    #     print(f"城市: {info.get('city')}")
+    #     print(f"地区: {info.get('region')}")
+    #     print(f"国家: {info.get('country')}")
+    #     print(f"邮政编码: {info.get('postal')}")
+    #     print(f"位置: {info.get('loc')}")
+    # else:
+    #     print("无法获取 IP 地址信息")
