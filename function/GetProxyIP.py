@@ -4,7 +4,10 @@ from lxml import etree
 import time
 import random
 from fake_useragent import UserAgent
-
+from requests import Session
+import socks
+import socket
+from concurrent.futures import ThreadPoolExecutor
 #https://api.openproxylist.xyz/socks4.txt
 #https://api.openproxylist.xyz/socks5.txt
 class GetProxyIP():
@@ -20,10 +23,16 @@ class GetProxyIP():
         return self.filter(self.parse_ip_port(list.text))
     def filter(self,list):
         # print(list)
+        threadPool = ThreadPoolExecutor(max_workers=50, thread_name_prefix="test_")
+
         for i in list:
-            print(i)
-            if self.check_proxy(i["ip"],i["port"]):
-                list.delete(i)
+            # print(i)
+            try:
+                threadPool.map( self.check_proxy,[i["ip"],i["port"]]) # 这是运行一次test的参数，众所周知map可以让test执行多次，即一个[]代表一个参数，一个参数赋予不同的值即增加[]的长度如从[1]到[1,2,3]
+            except Exception as e:
+                print(e)
+            # if self.check_proxy(i["ip"],i["port"]):
+            #     list.delete(i)
         return list
 
     def check_proxy(self,ip, port):
@@ -31,23 +40,28 @@ class GetProxyIP():
             # 设置重连次数
             requests.adapters.DEFAULT_RETRIES = 3
             # IP = random.choice(IPAgents)
-            proxy = f"http://{ip}:{port}"
+            session = Session()
+            session.proxy = {
+                "http":f"socks4//{ip}:{port}",
+                'https':f'socks4://{ip}:{port}'
+            }
+
             # thisIP = "".join(IP.split(":")[0:1])
             # print(thisIP)
-            res = requests.get(url="https://icanhazip.com/", timeout=2, proxies={"https": proxy})
+            res = requests.get(url="https://icanhazip.com/", timeout=10)
             proxyIP = res.text
-            if (proxyIP == proxy):
-                print(f"代理IP:{ip}:{port}有效！")
+            print(proxyIP,ip)
+            if (proxyIP == f"{ip}"):
+                print(f"IP:{ip}:{port}有效！")
                 if self.get_ip_info(ip).get == 'CN':#访问外国网站
                     return False
                 return True
             else:
-                print(f"代理IP:{ip}:{port}无效！ 错误地址1")
+                print(f"IP:{ip}:{port}无效！ 错误地址1")
                 return False
         except Exception as e:
-            print(f"{e}")
-            print(f"代理IP:{ip}:{port}无效 错误地址2！")
-        return False
+            print(f"IP:{ip}:{port}无效 错误地址2！{e}")
+            return False
 
     def get_ip_info(self,ip_address):
         url = f'https://ipinfo.io/{ip_address}/json'
@@ -67,9 +81,22 @@ class GetProxyIP():
                 result.append({'ip': ip.strip(), 'port': port.strip()})  # 创建字典并添加到结果列表
 
         return result
+def dome():
+
+    session = Session()
+    ip="100.1.53.24"
+    port=5678
+    # socks.set_default_proxy(socks.SOCKS4, ip, port)
+    # socket.socket = socks.socksocket
+    res = requests.get(url="http://icanhazip.com/", timeout=2,proxies={"https://":f"{ip}:{port}"})
+    proxyIP = res.text
+    print(proxyIP, ip)
+    if (proxyIP == f"{ip}"):
+        print(True)
 if __name__ == '__main__':
-    server = GetProxyIP()
+    # server = GetProxyIP()
     # 示例 IP 地址
+    dome()
     # ip_address = '8.8.8.8'  # Google 的公共 DNS 服务器
     # info = GetProxyIP.get_ip_info(ip_address)
     #
