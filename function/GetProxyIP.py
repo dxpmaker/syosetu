@@ -23,12 +23,12 @@ class GetProxyIP():
         return self.filter(self.parse_ip_port(list.text))
     def filter(self,list):
         # print(list)
-        threadPool = ThreadPoolExecutor(max_workers=50, thread_name_prefix="test_")
+        threadPool = ThreadPoolExecutor(max_workers=10, thread_name_prefix="test_")
 
         for i in list:
-            # print(i)
+            print(i)
             try:
-                threadPool.map( self.check_proxy,[i["ip"],i["port"]]) # 这是运行一次test的参数，众所周知map可以让test执行多次，即一个[]代表一个参数，一个参数赋予不同的值即增加[]的长度如从[1]到[1,2,3]
+                threadPool.map( self.check_proxy,(i["ip"],i["port"])) # 这是运行一次test的参数，众所周知map可以让test执行多次，即一个[]代表一个参数，一个参数赋予不同的值即增加[]的长度如从[1]到[1,2,3]
             except Exception as e:
                 print(e)
             # if self.check_proxy(i["ip"],i["port"]):
@@ -53,7 +53,7 @@ class GetProxyIP():
             print(proxyIP,ip)
             if (proxyIP == f"{ip}"):
                 print(f"IP:{ip}:{port}有效！")
-                if self.get_ip_info(ip).get == 'CN':#访问外国网站
+                if self.get_ip_info(ip).get == 'CN':
                     return False
                 return True
             else:
@@ -83,20 +83,28 @@ class GetProxyIP():
         return result
 def dome():
 
-    session = Session()
-    ip="100.1.53.24"
-    port=5678
+    # session = Session()
+    s = socks.socksocket()
+    ip="49.13.173.87"
+    port=8081
+    # s.set_proxy(socks.SOCKS5, ip)  # SOCKS4 and SOCKS5 use port 1080 by default
+    # s.set_proxy(socks.SOCKS4, ip, port)
+    s.set_proxy(socks.HTTP, ip, port)
     # socks.set_default_proxy(socks.SOCKS4, ip, port)
     # socket.socket = socks.socksocket
-    res = requests.get(url="http://icanhazip.com/", timeout=2,proxies={"https://":f"{ip}:{port}"})
-    proxyIP = res.text
-    print(proxyIP, ip)
-    if (proxyIP == f"{ip}"):
-        print(True)
+    s.connect(("icanhazip.com", 80))
+    # s.sendall("GET / HTTP/1.1 ...")
+    print (s.recv(4096))
+    # res = requests.get(url="http://icanhazip.com/", timeout=2,proxies={"http://":f"{ip}:{port}/"})
+    # proxyIP = res.text
+    # print(proxyIP)
+
+    # if (proxyIP == f"{ip}"):
+    #     print(True)
 if __name__ == '__main__':
-    # server = GetProxyIP()
+    server = GetProxyIP()
     # 示例 IP 地址
-    dome()
+    # dome()
     # ip_address = '8.8.8.8'  # Google 的公共 DNS 服务器
     # info = GetProxyIP.get_ip_info(ip_address)
     #
