@@ -8,7 +8,7 @@ def input_SQL(params_list,table_name="install",print_div ="../print"):
     file_exists = os.path.isfile(sql_file_name)
     # 如果文件不存在，创建新文件并写入创建表的语句
     # insert_template = f"INSERT INTO {table_name} (ncode, Introduction, author, key, type) VALUES ({', '.join(['%s'] * 5)});\n"
-    with open(sql_file_name, 'a') as f:
+    with open(sql_file_name, 'w' , encoding='utf-8') as f:
         if not file_exists:
             f.write(f"CREATE TABLE {table_name} (\n")
             f.write("    ncode char PRIMARY KEY,\n")
@@ -19,7 +19,10 @@ def input_SQL(params_list,table_name="install",print_div ="../print"):
             f.write("    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n")
             f.write(");\n")
         insert_statement = f'INSERT INTO {table_name} (ncode, Introduction, author, key, type) VALUES ({params_list[0]} {params_list[1]} {params_list[2]} {params_list[3]} {params_list[4]});\n'
-        f.write(insert_statement)
+        try:
+            f.write(insert_statement)
+        except Exception as  e:
+            print(e)
 def get_dir(ncode, print_div ="../print"):
     try:
         novel_dir =  os.path.normpath( f'{print_div}/{ncode}')
